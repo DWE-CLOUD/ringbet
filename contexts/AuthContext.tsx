@@ -46,11 +46,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isFarcasterEnvironment, setIsFarcasterEnvironment] = useState(false);
 
   useEffect(() => {
+    // Skip initialization during server-side rendering or build time
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
         // Check if we're in a Farcaster environment
-        const inFarcaster = typeof window !== 'undefined' && 
-          window.parent !== window && 
+        const inFarcaster = window.parent !== window && 
           window.location !== window.parent.location;
         
         setIsFarcasterEnvironment(inFarcaster);
