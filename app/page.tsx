@@ -67,7 +67,7 @@ function AppContent() {
     if (currentRing?.status === 'spinning' && !isSpinning) {
       setTimeout(() => setIsSpinning(true), 1000);
     }
-  }, [currentRing?.status]);
+  }, [currentRing?.status, isSpinning]);
 
   // Show loading screen first
   if (isLoading && !showLoadingComplete) {

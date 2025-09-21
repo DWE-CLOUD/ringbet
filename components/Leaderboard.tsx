@@ -126,7 +126,7 @@ export default function Leaderboard() {
         <div className="flex items-center justify-center space-x-2 mb-3">
           <Crown className="w-8 h-8 text-yellow-400 animate-bounce" />
           <h1 className="text-4xl font-black bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            Who's Winning?
+            Who&apos;s Winning?
           </h1>
           <Crown className="w-8 h-8 text-yellow-400 animate-bounce" style={{animationDelay: '0.5s'}} />
         </div>
@@ -216,7 +216,7 @@ export default function Leaderboard() {
 
               {/* Player Vibe/Status */}
               <div className="mb-4">
-                <p className="text-gray-300 text-lg font-medium">"{player.vibe}"</p>
+                <p className="text-gray-300 text-lg font-medium">&ldquo;{player.vibe}&rdquo;</p>
               </div>
 
               {/* Stats Row */}

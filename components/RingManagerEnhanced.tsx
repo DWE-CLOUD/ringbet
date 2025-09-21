@@ -380,7 +380,7 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
                   {userInRing && ring.status !== 'finished' && (
                     <div className="text-center text-green-400 font-medium bg-green-400/10 rounded-2xl py-2">
                       <Users className="w-4 h-4 inline mr-1" />
-                      You're in this ring!
+                      You&apos;re in this ring!
                     </div>
                   )}
 

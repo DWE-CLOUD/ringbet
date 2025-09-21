@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Ring, RingParticipant } from '@/lib/supabaseEnhanced';
 
 interface SpinWheelProps {
@@ -32,23 +32,25 @@ export default function SpinWheel({ ring, isSpinning, onSpinComplete }: SpinWhee
   };
 
   // Create segments from participants or default segments
-  const segments = ring?.participants.length ? 
-    ring.participants.map((participant, index) => ({
-      name: participant.player_name,
-      bet: ring.buy_in, // All participants pay the same buy-in amount
-      color: participant.color,
-      participant
-    })) :
-    [
-      { name: 'Empty', bet: 0, color: '#374151', participant: null },
-      { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
-      { name: 'Empty', bet: 0, color: '#374151', participant: null },
-      { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
-      { name: 'Empty', bet: 0, color: '#374151', participant: null },
-      { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
-      { name: 'Empty', bet: 0, color: '#374151', participant: null },
-      { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
-    ];
+  const segments = useMemo(() => {
+    return ring?.participants.length ? 
+      ring.participants.map((participant, index) => ({
+        name: participant.player_name,
+        bet: ring.buy_in, // All participants pay the same buy-in amount
+        color: participant.color,
+        participant
+      })) :
+      [
+        { name: 'Empty', bet: 0, color: '#374151', participant: null },
+        { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
+        { name: 'Empty', bet: 0, color: '#374151', participant: null },
+        { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
+        { name: 'Empty', bet: 0, color: '#374151', participant: null },
+        { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
+        { name: 'Empty', bet: 0, color: '#374151', participant: null },
+        { name: 'Empty', bet: 0, color: '#4b5563', participant: null },
+      ];
+  }, [ring?.participants, ring?.buy_in]);
 
   // Animate when new participants join
   useEffect(() => {

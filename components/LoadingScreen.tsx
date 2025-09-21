@@ -35,7 +35,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     }, 150);
 
     return () => clearInterval(interval);
-  }, [onComplete]);
+  }, [onComplete, loadingSteps.length]);
 
   const CurrentIcon = loadingSteps[currentStep].icon;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, MessageCircle } from 'lucide-react';
 import { chatService, ChatMessage } from '@/lib/supabaseEnhanced';
 import { useAccount } from 'wagmi';
@@ -16,10 +16,29 @@ export default function ChatSectionRealtime({ ringId }: ChatSectionRealtimeProps
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { address, isConnected } = useAccount();
 
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
+  const loadMessages = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await chatService.getMessages(ringId);
+      setMessages(data);
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ringId, scrollToBottom]);
+
   // Load initial messages
   useEffect(() => {
     loadMessages();
-  }, [ringId]);
+  }, [loadMessages]);
 
   // Subscribe to new messages
   useEffect(() => {
@@ -34,26 +53,7 @@ export default function ChatSectionRealtime({ ringId }: ChatSectionRealtimeProps
     return () => {
       subscription.unsubscribe();
     };
-  }, [ringId]);
-
-  const loadMessages = async () => {
-    try {
-      setIsLoading(true);
-      const data = await chatService.getMessages(ringId);
-      setMessages(data);
-      scrollToBottom();
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
+  }, [ringId, scrollToBottom]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
