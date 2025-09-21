@@ -31,15 +31,6 @@ export interface RingParticipant {
   joined_at: string
 }
 
-export interface ChatMessage {
-  id: string
-  ring_id: string
-  sender_address: string
-  sender_name: string
-  message: string
-  created_at: string
-}
-
 // Database functions
 export const ringService = {
   // Get all rings
@@ -151,55 +142,6 @@ export const ringService = {
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'ring_participants' }, 
-        callback
-      )
-      .subscribe()
-  }
-}
-
-// Chat service
-export const chatService = {
-  // Get messages for a ring
-  async getMessages(ringId: string) {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('ring_id', ringId)
-      .order('created_at', { ascending: true })
-      .limit(100)
-    
-    if (error) throw error
-    return data
-  },
-
-  // Send a message
-  async sendMessage(ringId: string, senderAddress: string, senderName: string, message: string) {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert([{
-        ring_id: ringId,
-        sender_address: senderAddress,
-        sender_name: senderName,
-        message: message.trim()
-      }])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
-  },
-
-  // Subscribe to chat messages for a ring
-  subscribeToMessages(ringId: string, callback: (payload: any) => void) {
-    return supabase
-      .channel(`chat-${ringId}`)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'chat_messages',
-          filter: `ring_id=eq.${ringId}`
-        }, 
         callback
       )
       .subscribe()

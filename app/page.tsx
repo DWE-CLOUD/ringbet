@@ -5,12 +5,13 @@ import LoadingScreen from '@/components/LoadingScreen';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import SpinWheel from '@/components/SpinWheel';
-import ChatSection from '@/components/ChatSectionSupabase';
-import RingManager from '@/components/RingManagerSupabase';
+import ChatSectionRealtime from '@/components/ChatSectionRealtime';
+import RingManager from '@/components/RingManagerEnhanced';
 import Leaderboard from '@/components/Leaderboard';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Web3Provider } from '@/components/providers/Web3Provider';
 import { useAccount } from 'wagmi';
+import { Ring, RingParticipant } from '@/lib/supabaseEnhanced';
 
 interface Participant {
   id: string;
@@ -20,25 +21,12 @@ interface Participant {
   color: string;
 }
 
-interface Ring {
-  id: string;
-  creator_address: string;
-  creator_name: string;
-  buy_in: number;
-  max_players: number;
-  current_players: number;
-  total_pot: number;
-  status: 'waiting' | 'active' | 'spinning' | 'finished';
-  winner_address?: string;
-  winner_name?: string;
-  participants?: any[];
-}
 
 function AppContent() {
   const { user, isLoading, updateStats } = useAuth();
   const { address, isConnected } = useAccount();
   const [currentView, setCurrentView] = useState<'rings' | 'game' | 'leaderboard'>('rings');
-  const [currentRing, setCurrentRing] = useState<Ring | null>(null);
+  const [currentRing, setCurrentRing] = useState<(Ring & { participants: RingParticipant[] }) | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showLoadingComplete, setShowLoadingComplete] = useState(false);
 
@@ -62,7 +50,7 @@ function AppContent() {
     }
   };
 
-  const handleRingChange = (ring: Ring | null) => {
+  const handleRingChange = (ring: (Ring & { participants: RingParticipant[] }) | null) => {
     setCurrentRing(ring);
     setCurrentView(ring ? 'game' : 'rings');
     setIsSpinning(false);
@@ -171,7 +159,7 @@ function AppContent() {
                         <div className="text-xl bg-gradient-to-r from-green-400 to-green-300 bg-clip-text font-bold">${currentRing.total_pot} Total Pot</div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {currentRing.participants?.map((participant, idx) => (
+                        {currentRing.participants?.map((participant: RingParticipant, idx: number) => (
                           <div
                             key={participant.id || idx}
                             className={`bg-gradient-to-br from-gray-800/60 to-gray-700/40 backdrop-blur-sm rounded-3xl p-6 text-center border-2 transition-all duration-500 hover:scale-110 cursor-pointer group ${
@@ -211,11 +199,8 @@ function AppContent() {
               </div>
               
               {/* Chat Section */}
-              <div className="w-80 flex-shrink-0">
-                <ChatSection 
-                  ringId={currentRing?.id}
-                  ringName={`Ring #${currentRing?.id.slice(-6)}`}
-                />
+              <div className="w-80 flex-shrink-0 h-[calc(100vh-8rem)]">
+                <ChatSectionRealtime ringId={currentRing?.id} />
               </div>
             </div>
           ) : null}

@@ -1,32 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-
-interface Participant {
-  id: string;
-  name: string;
-  bet: number;
-  avatar: string;
-  color: string;
-}
-
-interface Ring {
-  id: string;
-  name: string;
-  creator: string;
-  minBet: number;
-  maxParticipants: number;
-  participants: Participant[];
-  status: 'waiting' | 'active' | 'spinning' | 'finished';
-  timeLeft: number;
-  winner?: Participant;
-  totalPot: number;
-}
+import { Ring, RingParticipant } from '@/lib/supabaseEnhanced';
 
 interface SpinWheelProps {
-  ring: Ring | null;
+  ring: (Ring & { participants: RingParticipant[] }) | null;
   isSpinning: boolean;
-  onSpinComplete: (winner: Participant) => void;
+  onSpinComplete: (winner: any) => void;
 }
 
 export default function SpinWheel({ ring, isSpinning, onSpinComplete }: SpinWheelProps) {
@@ -40,7 +20,7 @@ export default function SpinWheel({ ring, isSpinning, onSpinComplete }: SpinWhee
     return Math.floor(Math.random() * 1000000);
   };
 
-  const calculateWinner = (seed: number, participants: Participant[]) => {
+  const calculateWinner = (seed: number, participants: RingParticipant[]) => {
     if (participants.length === 0) return null;
     
     // Use seed to create deterministic but random selection
@@ -54,8 +34,8 @@ export default function SpinWheel({ ring, isSpinning, onSpinComplete }: SpinWhee
   // Create segments from participants or default segments
   const segments = ring?.participants.length ? 
     ring.participants.map((participant, index) => ({
-      name: participant.name,
-      bet: participant.bet,
+      name: participant.player_name,
+      bet: ring.buy_in, // All participants pay the same buy-in amount
       color: participant.color,
       participant
     })) :
@@ -301,7 +281,7 @@ export default function SpinWheel({ ring, isSpinning, onSpinComplete }: SpinWhee
         <div className="absolute top-0 right-0 z-40">
           <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce">
             <div className="font-bold">🎉 New Player!</div>
-            <div className="text-sm">{ring.participants[ring.participants.length - 1]?.name} joined</div>
+            <div className="text-sm">{ring.participants[ring.participants.length - 1]?.player_name} joined</div>
           </div>
         </div>
       )}
