@@ -1,27 +1,26 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Users, Clock, Trophy, Plus, DollarSign } from 'lucide-react';
+import { Users, Clock, Trophy, Plus, DollarSign, Loader2 } from 'lucide-react';
+import { useRingsContract } from '@/hooks/useRingsContract';
+import { RingEvents } from '@/components/RingEvents';
+import { formatEther } from 'viem';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Participant {
-  id: string;
-  name: string;
-  bet: number;
+  address: string;
+  bet: bigint;
   avatar: string;
-  color: string;
 }
 
 interface Ring {
-  id: string;
-  name: string;
-  creator: string;
-  minBet: number;
-  maxParticipants: number;
+  id: bigint;
+  buyIn: bigint;
+  maxPlayers: bigint;
   participants: Participant[];
-  status: 'waiting' | 'active' | 'spinning' | 'finished';
-  timeLeft: number;
-  winner?: Participant;
-  totalPot: number;
+  isActive: boolean;
+  winner?: string;
+  totalPot: bigint;
 }
 
 interface RingManagerProps {

@@ -1,24 +1,25 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 
 interface User {
-  id: string;
+  fid?: number;
   username: string;
+  displayName: string;
   avatar: string;
-  balance: number;
+  address: string;
+  balance: bigint;
   totalWinnings: number;
   gamesPlayed: number;
   winRate: number;
-  joinedAt: Date;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (username: string) => void;
+  connect: () => Promise<void>;
   disconnect: () => void;
-  updateBalance: (newBalance: number) => void;
   updateStats: (winnings: number, isWin: boolean) => void;
 }
 
@@ -39,76 +40,108 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { address, isConnected } = useAccount();
+  const { connect: wagmiConnect, connectors } = useConnect();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
+  const [isFarcasterEnvironment, setIsFarcasterEnvironment] = useState(false);
 
-  // Check if wallet is already connected on page load
   useEffect(() => {
-    const checkConnection = async () => {
+    const initializeAuth = async () => {
       try {
-        const savedUser = localStorage.getItem('ringbet_user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
+        // Check if we're in a Farcaster environment
+        const inFarcaster = typeof window !== 'undefined' && 
+          window.parent !== window && 
+          window.location !== window.parent.location;
+        
+        setIsFarcasterEnvironment(inFarcaster);
+
+        if (inFarcaster) {
+          // Try to use Farcaster SDK
+          try {
+            const { sdk } = await import('@farcaster/miniapp-sdk');
+            const response = await sdk.quickAuth.fetch('/api/auth');
+            
+            if (response.ok) {
+              const userData = await response.json();
+              
+              setUser({
+                fid: userData.fid,
+                username: userData.username || `user-${userData.fid}`,
+                displayName: userData.displayName || userData.username,
+                avatar: userData.pfpUrl || '',
+                address: address || '',
+                balance: BigInt(0),
+                totalWinnings: 0,
+                gamesPlayed: 0,
+                winRate: 0,
+              });
+              
+              // Ready signal to Farcaster
+              sdk.actions.ready();
+            }
+          } catch (error) {
+            console.log('Farcaster SDK not available, using regular wallet connection');
+          }
+        }
+
+        // If not in Farcaster or Farcaster auth failed, use wallet connection
+        if (!inFarcaster || !user) {
+          if (isConnected && address) {
+            setUser({
+              username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+              displayName: 'Wallet User',
+              avatar: '',
+              address: address,
+              balance: BigInt(0),
+              totalWinnings: 0,
+              gamesPlayed: 0,
+              winRate: 0,
+            });
+          }
         }
       } catch (error) {
-        console.error('Error checking saved user:', error);
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    // Simulate initial loading
-    setTimeout(checkConnection, 2000);
-  }, []);
+    initializeAuth();
+  }, [isConnected, address]);
 
-  const login = (username: string) => {
-    const userId = Date.now().toString();
-      
-    // Create user profile
-    const newUser: User = {
-      id: userId,
-      username,
-      avatar: username.slice(0, 2).toUpperCase(),
-      balance: 5000, // Starting balance
-      totalWinnings: 0,
-      gamesPlayed: 0,
-      winRate: 0,
-      joinedAt: new Date(),
-    };
-
-    setUser(newUser);
-    localStorage.setItem('ringbet_user', JSON.stringify(newUser));
+  const connect = async () => {
+    try {
+      if (!isConnected && connectors.length > 0) {
+        wagmiConnect({ connector: connectors[0] });
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+    }
   };
 
   const disconnect = () => {
+    wagmiDisconnect();
     setUser(null);
-    localStorage.removeItem('ringbet_user');
-  };
-
-  const updateBalance = (newBalance: number) => {
-    if (user) {
-      const updatedUser = { ...user, balance: newBalance };
-      setUser(updatedUser);
-      localStorage.setItem('ringbet_user', JSON.stringify(updatedUser));
-    }
   };
 
   const updateStats = (winnings: number, isWin: boolean) => {
     if (user) {
-      const updatedUser = {
+      setUser({
         ...user,
         totalWinnings: user.totalWinnings + winnings,
         gamesPlayed: user.gamesPlayed + 1,
-        winRate: isWin ? ((user.gamesPlayed * user.winRate + 100) / (user.gamesPlayed + 1)) : ((user.gamesPlayed * user.winRate) / (user.gamesPlayed + 1)),
-      };
-      setUser(updatedUser);
-      localStorage.setItem('ringbet_user', JSON.stringify(updatedUser));
+        winRate: isWin 
+          ? ((user.gamesPlayed * user.winRate + 100) / (user.gamesPlayed + 1)) 
+          : ((user.gamesPlayed * user.winRate) / (user.gamesPlayed + 1)),
+      });
     }
   };
 
   const contextValue: AuthContextType = {
     user,
     isLoading,
-    login,
+    connect,
     disconnect,
-    updateBalance,
     updateStats,
   };
 
