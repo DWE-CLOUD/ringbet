@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import MobileNav from '@/components/MobileNav';
+import MobileHeader from '@/components/MobileHeader';
 import SpinWheel from '@/components/SpinWheel';
 import ChatSectionRealtime from '@/components/ChatSectionRealtime';
 import RingManager from '@/components/RingManagerEnhanced';
 import Leaderboard from '@/components/Leaderboard';
+import ProfilePage from '@/components/ProfilePage';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Web3Provider } from '@/components/providers/Web3Provider';
 import MiniAppDetector from '@/components/MiniAppDetector';
@@ -26,7 +29,7 @@ interface Participant {
 function AppContent() {
   const { user, isLoading, updateStats } = useAuth();
   const { address, isConnected } = useAccount();
-  const [currentView, setCurrentView] = useState<'rings' | 'game' | 'leaderboard'>('rings');
+  const [currentView, setCurrentView] = useState<'rings' | 'game' | 'leaderboard' | 'chat' | 'profile'>('rings');
   const [currentRing, setCurrentRing] = useState<(Ring & { participants: RingParticipant[] }) | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showLoadingComplete, setShowLoadingComplete] = useState(false);
@@ -90,32 +93,42 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-white">
+    <div className="min-h-screen bg-[#0d0d0d] text-white pb-16 md:pb-0">
       <MiniAppDetector />
-      <Header />
+      
+      {/* Desktop Header */}
+      <div className="hidden md:block">
+        <Header />
+      </div>
+      
+      {/* Mobile Header */}
+      <MobileHeader />
       
       <div className="flex">
-        <Sidebar currentView={currentView} onViewChange={setCurrentView} />
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <Sidebar currentView={currentView} onViewChange={setCurrentView} />
+        </div>
         
-        <main className="flex-1">
+        <main className="flex-1 w-full overflow-x-hidden">
           {currentView === 'rings' ? (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               <RingManager 
                 onRingChange={handleRingChange} 
               />
             </div>
           ) : currentView === 'leaderboard' ? (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               <Leaderboard />
             </div>
           ) : currentView === 'game' ? (
-            <div className="flex">
-              <div className="flex-1 p-8">
+            <div className="flex flex-col md:flex-row">
+              <div className="flex-1 p-4 md:p-8">
                 {/* Game Section */}
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h1 className="text-4xl font-bold text-white mb-2">
+                      <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
                         Ring #{currentRing?.id.slice(-6) || 'Lucky Spin'}
                       </h1>
                       {currentRing?.status === 'active' && (
@@ -160,7 +173,7 @@ function AppContent() {
                         <h3 className="text-3xl font-bold text-white bg-gradient-to-r from-white to-gray-300 bg-clip-text">Ring Participants</h3>
                         <div className="text-xl bg-gradient-to-r from-green-400 to-green-300 bg-clip-text font-bold">${currentRing.total_pot} Total Pot</div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
                         {currentRing.participants?.map((participant: RingParticipant, idx: number) => (
                           <div
                             key={participant.id || idx}
@@ -200,14 +213,23 @@ function AppContent() {
                 )}
               </div>
               
-              {/* Chat Section */}
-              <div className="w-80 flex-shrink-0 h-[calc(100vh-8rem)]">
+              {/* Chat Section - Hidden on mobile, shown on desktop */}
+              <div className="hidden md:block w-80 flex-shrink-0 h-[calc(100vh-8rem)]">
                 <ChatSectionRealtime ringId={currentRing?.id} />
               </div>
             </div>
+          ) : currentView === 'chat' ? (
+            <div className="h-[calc(100vh-8rem)] p-4 md:hidden">
+              <ChatSectionRealtime ringId={currentRing?.id} />
+            </div>
+          ) : currentView === 'profile' ? (
+            <ProfilePage />
           ) : null}
         </main>
       </div>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileNav currentView={currentView} onViewChange={(view) => setCurrentView(view as 'rings' | 'game' | 'leaderboard' | 'chat' | 'profile')} />
     </div>
   );
 }

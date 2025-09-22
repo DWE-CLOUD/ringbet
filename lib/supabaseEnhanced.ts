@@ -42,6 +42,27 @@ export interface ChatMessage {
   created_at: string
 }
 
+export interface UserProfile {
+  id: string
+  wallet_address: string
+  display_name: string
+  avatar_url?: string
+  bio?: string
+  twitter_handle?: string
+  discord_handle?: string
+  telegram_handle?: string
+  total_games: number
+  total_wins: number
+  total_losses: number
+  total_volume: number
+  biggest_win: number
+  current_streak: number
+  best_streak: number
+  rank: number
+  created_at: string
+  updated_at: string
+}
+
 // Enhanced Database functions
 export const ringService = {
   // Get all rings with participants
@@ -267,5 +288,149 @@ export const chatService = {
     }
     
     return channel.subscribe()
+  }
+}
+
+// User Profile Service
+export const userProfileService = {
+  // Get or create user profile
+  async getOrCreateProfile(walletAddress: string): Promise<UserProfile> {
+    // First try to get existing profile
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('wallet_address', walletAddress.toLowerCase())
+      .single()
+
+    if (existingProfile) {
+      return existingProfile
+    }
+
+    // Create new profile if doesn't exist
+    const newProfile = {
+      wallet_address: walletAddress.toLowerCase(),
+      display_name: `Player ${walletAddress.slice(0, 6)}`,
+      total_games: 0,
+      total_wins: 0,
+      total_losses: 0,
+      total_volume: 0,
+      biggest_win: 0,
+      current_streak: 0,
+      best_streak: 0,
+      rank: 0
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .insert([newProfile])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  // Update user profile
+  async updateProfile(walletAddress: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('wallet_address', walletAddress.toLowerCase())
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  // Get user stats from actual game data
+  async getUserStats(walletAddress: string) {
+    const address = walletAddress.toLowerCase()
+
+    // Get total games participated
+    const { data: participations } = await supabase
+      .from('ring_participants')
+      .select(`
+        ring_id,
+        rings!inner(
+          status,
+          winner_address,
+          buy_in,
+          total_pot
+        )
+      `)
+      .eq('player_address', address)
+
+    if (!participations) return null
+
+    // Calculate stats
+    const totalGames = participations.length
+    const completedGames = participations.filter(p => p.rings.status === 'finished')
+    const wins = completedGames.filter(p => p.rings.winner_address?.toLowerCase() === address)
+    const losses = completedGames.filter(p => p.rings.winner_address?.toLowerCase() !== address)
+    
+    const totalWins = wins.length
+    const totalLosses = losses.length
+    const winRate = totalGames > 0 ? (totalWins / totalGames) * 100 : 0
+    
+    const totalVolume = participations.reduce((sum, p) => sum + (p.rings.buy_in || 0), 0)
+    const biggestWin = wins.length > 0 ? Math.max(...wins.map(w => w.rings.total_pot || 0)) : 0
+
+    // Calculate current streak
+    let currentStreak = 0
+    const recentGames = completedGames.slice(-10).reverse() // Last 10 games, most recent first
+    for (const game of recentGames) {
+      if (game.rings.winner_address?.toLowerCase() === address) {
+        currentStreak++
+      } else {
+        break
+      }
+    }
+
+    return {
+      totalGames,
+      totalWins,
+      totalLosses,
+      winRate: Math.round(winRate * 100) / 100,
+      totalVolume,
+      biggestWin,
+      currentStreak
+    }
+  },
+
+  // Update user stats after a game
+  async updateUserStats(walletAddress: string, gameResult: { won: boolean, amount: number }) {
+    const stats = await this.getUserStats(walletAddress)
+    if (!stats) return
+
+    const profile = await this.getOrCreateProfile(walletAddress)
+    
+    const updates = {
+      total_games: stats.totalGames,
+      total_wins: stats.totalWins,
+      total_losses: stats.totalLosses,
+      total_volume: stats.totalVolume,
+      biggest_win: stats.biggestWin,
+      current_streak: stats.currentStreak,
+      best_streak: Math.max(profile.best_streak, stats.currentStreak)
+    }
+
+    return this.updateProfile(walletAddress, updates)
+  },
+
+  // Get leaderboard
+  async getLeaderboard(limit: number = 50) {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .order('total_wins', { ascending: false })
+      .order('total_volume', { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+    return data || []
   }
 }

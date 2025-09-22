@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { userProfileService } from '@/lib/supabaseEnhanced';
 
 interface User {
   fid?: number;
@@ -91,16 +92,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // If not in Farcaster or Farcaster auth failed, use wallet connection
         if (!inFarcaster || !user) {
           if (isConnected && address) {
-            setUser({
-              username: `${address.slice(0, 6)}...${address.slice(-4)}`,
-              displayName: 'Wallet User',
-              avatar: '',
-              address: address,
-              balance: BigInt(0),
-              totalWinnings: 0,
-              gamesPlayed: 0,
-              winRate: 0,
-            });
+            try {
+              // Get or create user profile for meaningful display name
+              const profile = await userProfileService.getOrCreateProfile(address);
+              
+              setUser({
+                username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+                displayName: profile.display_name || `Player ${address.slice(0, 6)}`,
+                avatar: profile.avatar_url || '',
+                address: address,
+                balance: BigInt(0),
+                totalWinnings: profile.total_wins || 0,
+                gamesPlayed: profile.total_games || 0,
+                winRate: profile.total_games > 0 ? (profile.total_wins / profile.total_games) * 100 : 0,
+              });
+            } catch (error) {
+              console.error('Error loading user profile:', error);
+              // Fallback to basic user info
+              setUser({
+                username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+                displayName: `Player ${address.slice(0, 6)}`,
+                avatar: '',
+                address: address,
+                balance: BigInt(0),
+                totalWinnings: 0,
+                gamesPlayed: 0,
+                winRate: 0,
+              });
+            }
           }
         }
       } catch (error) {
