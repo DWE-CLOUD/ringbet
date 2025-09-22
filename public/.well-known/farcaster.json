@@ -1,10 +1,15 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjk5NTk0OCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEQ3Q2M2Y2UzRmMxMUYxNUNkM0UxRDZmQmM5MDljNThhYjI0QUJCYUIifQ",
+    "payload": "eyJkb21haW4iOiJyaW5nYmV0LnZlcmNlbC5hcHAifQ",
+    "signature": "MHgyOWQ0YjhjNjBjYjQwNTJkYjA3ZTdhZTk0NGMwYzQ3YzI2NTE5NzRlZDA1OWJkYWE4Yzc3MjAwMzFhNzM0ODAyNTI5NTE1MDQ5ZTQxZWFhYzllZmE2NzU2NDdlYmM0NzI1ZmUzOGQ1ZTM1MTIxMzQ3ZDJiMjlhZjE2YjA2NjkxYjFi"
+  },
   "miniapp": {
     "version": "1",
     "name": "RingBet",
-    "iconUrl": "https://your-domain.com/icon.svg",
-    "homeUrl": "https://your-domain.com?miniApp=true",
-    "splashImageUrl": "https://your-domain.com/splash.svg",
+    "iconUrl": "https://ringbet.vercel.app/icon.svg",
+    "homeUrl": "https://ringbet.vercel.app?miniApp=true",
+    "splashImageUrl": "https://ringbet.vercel.app/splash.svg",
     "splashBackgroundColor": "#0d0d0d",
     "subtitle": "Ultimate Roulette Experience",
     "description": "Join the ultimate crypto roulette experience. Spin the wheel, place your bets, and win big in this decentralized betting game.",
