@@ -1,0 +1,30 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "RingBet",
+    "iconUrl": "https://your-domain.com/icon.svg",
+    "homeUrl": "https://your-domain.com?miniApp=true",
+    "splashImageUrl": "https://your-domain.com/splash.svg",
+    "splashBackgroundColor": "#0d0d0d",
+    "subtitle": "Ultimate Roulette Experience",
+    "description": "Join the ultimate crypto roulette experience. Spin the wheel, place your bets, and win big in this decentralized betting game.",
+    "primaryCategory": "games",
+    "tags": [
+      "roulette",
+      "betting",
+      "crypto",
+      "games",
+      "web3"
+    ],
+    "tagline": "Where Every Spin Counts",
+    "ogTitle": "RingBet - Ultimate Roulette",
+    "ogDescription": "Join the ultimate crypto roulette experience. Spin the wheel, place your bets, and win big!",
+    "requiredChains": [
+      "eip155:84532"
+    ],
+    "requiredCapabilities": [
+      "actions.signIn",
+      "wallet.getEthereumProvider"
+    ]
+  }
+}

@@ -10,6 +10,7 @@ import RingManager from '@/components/RingManagerEnhanced';
 import Leaderboard from '@/components/Leaderboard';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Web3Provider } from '@/components/providers/Web3Provider';
+import MiniAppDetector from '@/components/MiniAppDetector';
 import { useAccount } from 'wagmi';
 import { Ring, RingParticipant } from '@/lib/supabaseEnhanced';
 
@@ -90,6 +91,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
+      <MiniAppDetector />
       <Header />
       
       <div className="flex">
