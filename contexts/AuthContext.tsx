@@ -61,29 +61,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsFarcasterEnvironment(inFarcaster);
 
         if (inFarcaster) {
-          // Try to use Farcaster SDK
+          // Try to use Farcaster SDK for basic info (without API route)
           try {
             const { sdk } = await import('@farcaster/miniapp-sdk');
-            const response = await sdk.quickAuth.fetch('/api/auth');
             
-            if (response.ok) {
-              const userData = await response.json();
-              
+            // Use SDK context instead of API route
+            const context = await sdk.context;
+            if (context?.user) {
               setUser({
-                fid: userData.fid,
-                username: userData.username || `user-${userData.fid}`,
-                displayName: userData.displayName || userData.username,
-                avatar: userData.pfpUrl || '',
+                fid: context.user.fid,
+                username: context.user.username || `user-${context.user.fid}`,
+                displayName: context.user.displayName || context.user.username || 'Farcaster User',
+                avatar: context.user.pfpUrl || '',
                 address: address || '',
                 balance: BigInt(0),
                 totalWinnings: 0,
                 gamesPlayed: 0,
                 winRate: 0,
               });
-              
-              // Ready signal to Farcaster
-              sdk.actions.ready();
             }
+            
+            // Ready signal to Farcaster
+            sdk.actions.ready();
           } catch (error) {
             console.log('Farcaster SDK not available, using regular wallet connection');
           }
