@@ -9,27 +9,29 @@ import { formatEther } from 'viem';
 
 interface RingManagerProps {
   onRingChange?: (ring: Ring & { participants: RingParticipant[] }) => void;
+  isDemoMode?: boolean;
 }
 
 const AVATAR_EMOJIS = ['🎯', '🎲', '🎪', '🎨', '🎭', '🎸', '🎺', '🎻'];
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
 
-export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) {
+export default function RingManagerEnhanced({ onRingChange, isDemoMode = false }: RingManagerProps) {
   const [rings, setRings] = useState<(Ring & { participants: RingParticipant[] })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [buyInAmount, setBuyInAmount] = useState('0.01'); // ETH amount
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [processingRingId, setProcessingRingId] = useState<string | null>(null);
+  const [demoJoiningRing, setDemoJoiningRing] = useState<string | null>(null);
   
   const { address, isConnected } = useAccount();
   const { sendPayment, isProcessing, resetPayment, isConfirmed } = useWalletPayment();
 
-  // Load rings from Supabase
+  // Load rings from Supabase (filtered by demo mode)
   const loadRings = async () => {
     try {
       setIsLoading(true);
-      const data = await ringService.getAllRings();
+      const data = await ringService.getAllRings(isDemoMode);
       setRings(data || []);
     } catch (error) {
       console.error('Error loading rings:', error);
@@ -38,10 +40,10 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
     }
   };
 
-  // Initial load
+  // Initial load and reload when demo mode changes
   useEffect(() => {
     loadRings();
-  }, []);
+  }, [isDemoMode]);
 
   // Subscribe to real-time changes
   useEffect(() => {
@@ -54,7 +56,142 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
     };
   }, []);
 
+  // Demo mode: Create ring and simulate players joining
+  const handleDemoCreateRing = async () => {
+    if (!address || !isConnected) {
+      alert('Please connect your wallet first');
+      return;
+    }
+    
+    try {
+      // Create ring in database (no real payment) - creator auto-joins
+      const newRing = await ringService.createRing({
+        creator_address: address,
+        creator_name: `${address.slice(0, 6)}...${address.slice(-4)}`,
+        buy_in: Number(buyInAmount),
+        max_players: maxPlayers,
+        current_players: 1, // Creator automatically joins
+        total_pot: Number(buyInAmount), // Creator's buy-in
+        status: 'waiting',
+        tx_hash: 'demo-tx-' + Date.now(),
+        is_demo: true
+      });
+
+      // Reset form
+      setShowCreateForm(false);
+      setBuyInAmount('0.01');
+      setMaxPlayers(4);
+      
+      loadRings();
+      
+      // Load the ring with participants and navigate
+      setTimeout(async () => {
+        const updatedRings = await ringService.getAllRings(true);
+        const createdRing = updatedRings?.find(r => r.id === newRing.id);
+        if (createdRing && onRingChange) {
+          onRingChange(createdRing);
+        }
+        
+        // Start simulating other players joining after navigation
+        setTimeout(async () => {
+          await simulatePlayersJoining(newRing.id, maxPlayers - 1);
+        }, 1000);
+      }, 500);
+    } catch (error: any) {
+      console.error('Error creating demo ring:', error);
+      alert(`Failed to create demo ring: ${error.message}`);
+    }
+  };
+
+  // Simulate players joining the ring with better UX
+  const simulatePlayersJoining = async (ringId: string, playersToAdd: number) => {
+    const demoPlayers = [
+      { name: 'Alice', avatar: '🎯', color: '#FF6B6B' },
+      { name: 'Bob', avatar: '🎲', color: '#4ECDC4' },
+      { name: 'Charlie', avatar: '🎪', color: '#45B7D1' },
+      { name: 'Diana', avatar: '🎨', color: '#96CEB4' },
+      { name: 'Eve', avatar: '🎭', color: '#FFEAA7' },
+      { name: 'Frank', avatar: '🎸', color: '#DDA0DD' }
+    ];
+
+    for (let i = 0; i < Math.min(playersToAdd, demoPlayers.length); i++) {
+      setTimeout(async () => {
+        try {
+          const player = demoPlayers[i];
+          if (!player || !player.name || !player.avatar || !player.color) {
+            console.error('Invalid player data:', player);
+            return;
+          }
+          
+          const demoAddress = `0x${Math.random().toString(16).substr(2, 40)}`;
+          
+          // Add player to ring with validation
+          await ringService.joinRing(ringId, {
+            player_address: demoAddress,
+            player_name: player.name,
+            avatar: player.avatar,
+            color: player.color,
+            tx_hash: 'demo-tx-' + Date.now()
+          }, Number(buyInAmount));
+          
+          loadRings();
+          
+          // Update the current ring view if user is watching this ring
+          const updatedRings = await ringService.getAllRings(true);
+          const currentRing = updatedRings?.find(r => r.id === ringId);
+          if (currentRing && onRingChange) {
+            onRingChange(currentRing);
+          }
+          
+          if (currentRing && currentRing.current_players >= currentRing.max_players) {
+            // Ring is full, start spinning after a short delay
+            setTimeout(async () => {
+              await ringService.startSpinning(ringId);
+              loadRings();
+              
+              // Update ring view to show spinning status
+              const spinningRings = await ringService.getAllRings(true);
+              const spinningRing = spinningRings?.find(r => r.id === ringId);
+              if (spinningRing && onRingChange) {
+                onRingChange(spinningRing);
+              }
+              
+              // Simulate wheel spinning for 4 seconds
+              setTimeout(async () => {
+                const finalRings = await ringService.getAllRings(true);
+                const finalRing = finalRings?.find(r => r.id === ringId);
+                
+                if (finalRing && finalRing.participants && finalRing.participants.length > 0) {
+                  // Select random winner
+                  const randomWinner = finalRing.participants[
+                    Math.floor(Math.random() * finalRing.participants.length)
+                  ];
+                  
+                  await ringService.declareWinner(ringId, randomWinner.player_address, randomWinner.player_name);
+                  loadRings();
+                  
+                  // Update ring view to show winner
+                  const winnerRings = await ringService.getAllRings(true);
+                  const winnerRing = winnerRings?.find(r => r.id === ringId);
+                  if (winnerRing && onRingChange) {
+                    onRingChange(winnerRing);
+                  }
+                }
+              }, 4000); // 4 seconds for wheel spin
+            }, 1500); // 1.5 seconds delay before starting spin
+          }
+        } catch (error) {
+          console.error('Error adding demo player:', error);
+        }
+      }, (i + 1) * 1000); // 1 second between each player joining
+    }
+  };
+
   const handleCreateRing = async () => {
+    if (isDemoMode) {
+      return handleDemoCreateRing();
+    }
+    
     if (!address || !isConnected) {
       alert('Please connect your wallet first');
       return;
@@ -108,10 +245,14 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
     setProcessingRingId(ring.id);
     
     try {
-      // Step 1: Process wallet payment
-      const txHash = await sendPayment(ring.buy_in);
+      let txHash = 'demo-tx-' + Date.now();
       
-      // Step 2: Join ring in database
+      // Only process real payment if not in demo mode
+      if (!isDemoMode) {
+        txHash = await sendPayment(ring.buy_in);
+      }
+      
+      // Join ring in database
       const randomAvatar = AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)];
       const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
       
@@ -124,13 +265,27 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
       }, ring.buy_in);
 
       // Reset payment state
-      resetPayment();
+      if (!isDemoMode) {
+        resetPayment();
+      }
       loadRings(); // Refresh the list
       
-      alert(`Joined ring successfully! Transaction: ${txHash}`);
+      if (isDemoMode) {
+        alert('Joined demo ring successfully!');
+        // In demo mode, simulate more players joining after user joins
+        setDemoJoiningRing(ring.id);
+        setTimeout(async () => {
+          await simulatePlayersJoining(ring.id, ring.max_players - ring.current_players - 1);
+          setDemoJoiningRing(null);
+        }, 1000);
+      } else {
+        alert(`Joined ring successfully! Transaction: ${txHash}`);
+      }
     } catch (error: any) {
       console.error('Error joining ring:', error);
-      resetPayment(); // Clear payment state on error
+      if (!isDemoMode) {
+        resetPayment(); // Clear payment state on error
+      }
       alert(`Failed to join ring: ${error.message}`);
     } finally {
       setProcessingRingId(null);
@@ -176,7 +331,23 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <h2 className="text-3xl font-bold text-white">Live Betting Rings</h2>
+          <h2 className="text-3xl font-bold text-white">
+            {isDemoMode ? 'Demo Betting Rings' : 'Live Betting Rings'}
+          </h2>
+          <div className={`rounded-full px-3 py-1 flex items-center gap-2 ${
+            isDemoMode 
+              ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30' 
+              : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30'
+          }`}>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${
+              isDemoMode ? 'bg-purple-400' : 'bg-green-400'
+            }`} />
+            <span className={`text-sm font-semibold ${
+              isDemoMode ? 'text-purple-300' : 'text-green-300'
+            }`}>
+              {isDemoMode ? 'Demo Mode' : 'Real Mode'}
+            </span>
+          </div>
           <button
             onClick={loadRings}
             className="text-gray-400 hover:text-white transition-colors"
@@ -206,10 +377,17 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
       {showCreateForm && isConnected && (
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 backdrop-blur-xl border border-gray-600/50 rounded-3xl p-8 shadow-2xl">
           <h3 className="text-xl text-white mb-4">Create New Ring</h3>
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-4">
-            <p className="text-sm text-blue-300">
+          <div className={`border rounded-xl p-3 mb-4 ${
+            isDemoMode 
+              ? 'bg-purple-500/10 border-purple-500/30' 
+              : 'bg-blue-500/10 border-blue-500/30'
+          }`}>
+            <p className={`text-sm ${isDemoMode ? 'text-purple-300' : 'text-blue-300'}`}>
               <DollarSign className="w-4 h-4 inline mr-1" />
-              You will pay the buy-in amount to create and join as the first player
+              {isDemoMode 
+                ? 'Demo mode: No real payment required. AI players will join automatically!'
+                : 'You will pay the buy-in amount to create and join as the first player'
+              }
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -244,7 +422,7 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
               className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-8 py-3 rounded-2xl transition-all duration-300 font-medium flex items-center"
             >
               {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Create & Pay {buyInAmount} ETH
+{isDemoMode ? `Create Demo Ring (${buyInAmount} ETH)` : `Create & Pay ${buyInAmount} ETH`}
             </button>
             <button
               onClick={() => setShowCreateForm(false)}
@@ -259,15 +437,26 @@ export default function RingManagerEnhanced({ onRingChange }: RingManagerProps) 
       {/* No Rings State */}
       {!isLoading && rings.length === 0 && (
         <div className="text-center py-16">
-          <div className="text-6xl mb-4">🎯</div>
-          <h3 className="text-2xl font-bold text-white mb-2">No Live Bets</h3>
-          <p className="text-gray-400 mb-6">Be the first to create a betting ring!</p>
+          <div className="text-6xl mb-4">{isDemoMode ? '🎮' : '🎯'}</div>
+          <h3 className="text-2xl font-bold text-white mb-2">
+            {isDemoMode ? 'No Demo Rings' : 'No Live Bets'}
+          </h3>
+          <p className="text-gray-400 mb-6">
+            {isDemoMode 
+              ? 'Create a demo ring to practice and experience the game!' 
+              : 'Be the first to create a betting ring!'
+            }
+          </p>
           {isConnected && (
             <button
               onClick={() => setShowCreateForm(true)}
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium"
+              className={`px-6 py-3 rounded-xl font-medium text-white ${
+                isDemoMode 
+                  ? 'bg-purple-500 hover:bg-purple-600' 
+                  : 'bg-green-500 hover:bg-green-600'
+              }`}
             >
-              Create First Ring
+              {isDemoMode ? 'Create Demo Ring' : 'Create First Ring'}
             </button>
           )}
         </div>

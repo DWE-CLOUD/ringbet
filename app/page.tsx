@@ -33,6 +33,8 @@ function AppContent() {
   const [currentRing, setCurrentRing] = useState<(Ring & { participants: RingParticipant[] }) | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showLoadingComplete, setShowLoadingComplete] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoNotification, setDemoNotification] = useState<string | null>(null);
 
   const handleSpinComplete = (winner: any) => {
     if (currentRing) {
@@ -56,8 +58,18 @@ function AppContent() {
 
   const handleRingChange = (ring: (Ring & { participants: RingParticipant[] }) | null) => {
     setCurrentRing(ring);
-    setCurrentView(ring ? 'game' : 'rings');
-    setIsSpinning(false);
+    if (ring) {
+      setCurrentView('game');
+      // For demo rings, show notifications
+      if (ring.is_demo) {
+        setDemoNotification('🎮 Demo ring created! AI players will join every 1 second...');
+        setTimeout(() => {
+          setDemoNotification(null);
+        }, 4000);
+      }
+    } else {
+      setCurrentView('rings');
+    }
   };
 
   const startSpin = () => {
@@ -98,7 +110,7 @@ function AppContent() {
       
       {/* Desktop Header */}
       <div className="hidden md:block">
-        <Header />
+        <Header isDemoMode={isDemoMode} onToggleDemoMode={() => setIsDemoMode(!isDemoMode)} />
       </div>
       
       {/* Mobile Header */}
@@ -115,6 +127,7 @@ function AppContent() {
             <div className="p-4 md:p-8">
               <RingManager 
                 onRingChange={handleRingChange} 
+                isDemoMode={isDemoMode}
               />
             </div>
           ) : currentView === 'leaderboard' ? (
@@ -129,19 +142,50 @@ function AppContent() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
-                        Ring #{currentRing?.id.slice(-6) || 'Lucky Spin'}
+                        {currentRing?.is_demo ? '🎮 Demo Ring' : 'Ring'} #{currentRing?.id.slice(-6) || 'Lucky Spin'}
                       </h1>
-                      {currentRing?.status === 'active' && (
+                      
+                      {/* Demo Ring Status Messages */}
+                      {currentRing?.is_demo && currentRing?.status === 'waiting' && (
+                        <div className="space-y-3">
+                          <div className="text-purple-400 text-lg mb-2 animate-pulse">
+                            🤖 AI players are joining... ({currentRing.current_players}/{currentRing.max_players})
+                          </div>
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${(currentRing.current_players / currentRing.max_players) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-sm text-purple-300">
+                            {currentRing.current_players === currentRing.max_players 
+                              ? '🎉 Ring is FULL! Get ready to spin the wheel!' 
+                              : `🎯 ${currentRing.max_players - currentRing.current_players} more player${currentRing.max_players - currentRing.current_players > 1 ? 's' : ''} needed to start!`
+                            }
+                          </div>
+                          <div className="text-xs text-purple-200 mt-1">
+                            💰 Current Prize Pool: ${currentRing.total_pot.toFixed(3)} ETH
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Regular Status Messages */}
+                      {!currentRing?.is_demo && currentRing?.status === 'active' && (
                         <div className="text-gray-400 text-lg mb-2">
                           Players: {currentRing.current_players}/{currentRing.max_players}
                         </div>
                       )}
+                      
                       {currentRing?.status === 'spinning' && (
-                        <div className="text-green-400 text-lg mb-2">🎯 Spinning now! Winner takes ${currentRing.total_pot}</div>
+                        <div className={`text-lg mb-2 animate-pulse ${currentRing.is_demo ? 'text-purple-400' : 'text-green-400'}`}>
+                          🎯 {currentRing.is_demo ? 'Demo wheel spinning!' : 'Spinning now!'} Winner takes ${currentRing.total_pot}
+                        </div>
                       )}
+                      
                       {currentRing?.winner_name && (
-                        <div className="text-yellow-400 text-2xl font-bold mb-2">
-                          🏆 {currentRing.winner_name} wins ${currentRing.total_pot}!
+                        <div className={`text-2xl font-bold mb-2 ${currentRing.is_demo ? 'text-purple-400' : 'text-yellow-400'}`}>
+                          🏆 {currentRing.winner_name} wins ${currentRing.total_pot}! {currentRing.is_demo ? '(Demo)' : ''}
                         </div>
                       )}
                     </div>
@@ -153,6 +197,13 @@ function AppContent() {
                     </button>
                   </div>
                 </div>
+
+                {/* Demo Notification */}
+                {currentRing?.is_demo && demoNotification && (
+                  <div className="mb-6 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-2xl p-4 text-center">
+                    <div className="text-purple-300 font-semibold">{demoNotification}</div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-center">
                   {/* Wheel */}
@@ -223,7 +274,7 @@ function AppContent() {
               <ChatSectionRealtime ringId={currentRing?.id} />
             </div>
           ) : currentView === 'profile' ? (
-            <ProfilePage />
+            <ProfilePage onBackToDashboard={() => setCurrentView('rings')} />
           ) : null}
         </main>
       </div>

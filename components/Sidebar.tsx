@@ -1,10 +1,11 @@
 "use client";
 
-import { Grid3X3, Home, ShoppingCart, Trophy, Clock, Settings } from 'lucide-react';
+import React from 'react';
+import { Grid3X3, Home, ShoppingCart, Trophy, Clock, Settings, User } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'rings' | 'game' | 'leaderboard';
-  onViewChange: (view: 'rings' | 'game' | 'leaderboard') => void;
+  currentView: 'rings' | 'game' | 'leaderboard' | 'chat' | 'profile';
+  onViewChange: (view: 'rings' | 'game' | 'leaderboard' | 'chat' | 'profile') => void;
 }
 
 export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
@@ -23,6 +24,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       name: 'Rings' 
     },
     { icon: Trophy, key: 'leaderboard', name: 'Leaderboard' },
+    { icon: User, key: 'profile', name: 'Profile' },
     { icon: Grid3X3, key: null, name: 'Games' },
     { icon: ShoppingCart, key: null, name: 'Shop' },
     { icon: Clock, key: null, name: 'History' },
@@ -48,7 +50,13 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
                   : 'text-gray-600 cursor-not-allowed opacity-50'
               }`}
             >
-              <item.icon className={`w-6 h-6 transition-transform duration-300 ${currentView === item.key ? 'scale-110' : item.key ? 'group-hover:scale-110' : ''}`} />
+              {item.key === 'rings' ? (
+                <item.icon />
+              ) : (
+                React.createElement(item.icon as any, {
+                  className: `w-6 h-6 transition-transform duration-300 ${currentView === item.key ? 'scale-110' : item.key ? 'group-hover:scale-110' : ''}`
+                })
+              )}
             </button>
             {/* Tooltip */}
             <div className="absolute left-full ml-4 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-2 rounded-2xl text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap shadow-lg z-50">

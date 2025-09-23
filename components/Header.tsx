@@ -1,15 +1,35 @@
 "use client";
 
-import { Menu, Star, Plus, Bell, MessageSquare, ChevronDown, LogOut, User, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, Star, Plus, Bell, MessageSquare, ChevronDown, LogOut, User, Settings, Zap } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function Header() {
+interface HeaderProps {
+  isDemoMode?: boolean;
+  onToggleDemoMode?: () => void;
+}
+
+export default function Header({ isDemoMode = false, onToggleDemoMode }: HeaderProps) {
   const { user, disconnect } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
-    <header className="bg-gradient-to-r from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] border-b border-gray-700/30 px-6 py-4 backdrop-blur-sm">
+    <header className="bg-gradient-to-r from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] border-b border-gray-700/30 px-6 py-4 backdrop-blur-sm relative z-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-8">
           <div className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-300 cursor-pointer group">
@@ -35,20 +55,40 @@ export default function Header() {
             <div className="w-4 h-4 bg-yellow-600 rounded-full animate-bounce"></div>
             <span className="text-lg">${user?.balance?.toLocaleString() || '0'}</span>
           </div>
-          
-          <button className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-300 p-3 rounded-3xl shadow-lg hover:shadow-green-500/30 hover:scale-110 group">
-            <Plus className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-300" />
-          </button>
-          
+
+          {/* Real/Demo Mode Toggle */}
+          <div className="flex items-center bg-gray-800/50 rounded-full p-1 border border-gray-600/30">
+            <button
+              onClick={() => !isDemoMode || onToggleDemoMode?.()}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                !isDemoMode
+                  ? 'bg-green-500 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Real
+            </button>
+            <button
+              onClick={() => isDemoMode || onToggleDemoMode?.()}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                isDemoMode
+                  ? 'bg-purple-500 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Demo
+            </button>
+          </div>
+
           <div className="p-3 hover:bg-gray-800/50 rounded-2xl transition-all duration-300 cursor-pointer group">
             <Bell className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:scale-110 transition-all duration-300" />
           </div>
           <div className="p-3 hover:bg-gray-800/50 rounded-2xl transition-all duration-300 cursor-pointer group">
             <MessageSquare className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:scale-110 transition-all duration-300" />
           </div>
-          
+
           {/* Profile Menu */}
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <div 
               className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800/50 p-3 rounded-3xl transition-all duration-300 group"
               onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -68,8 +108,9 @@ export default function Header() {
 
             {/* Dropdown Menu */}
             {showProfileMenu && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-top-4 duration-300">
+              <div className="absolute right-0 top-full mt-2 w-72 bg-gradient-to-br from-gray-900/98 to-gray-800/98 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl z-[100] animate-in slide-in-from-top-4 duration-300">
                 <div className="p-6">
+                  {/* Profile Header */}
                   <div className="flex items-center space-x-3 mb-6">
                     <div 
                       className="w-12 h-12 rounded-3xl flex items-center justify-center shadow-lg font-bold text-white"
@@ -77,33 +118,37 @@ export default function Header() {
                     >
                       {user?.avatar || 'U'}
                     </div>
-                    <div>
-                      <div className="font-bold text-white">{user?.username}</div>
+                    <div className="flex-1">
+                      <div className="font-bold text-white">{user?.username || 'Player'}</div>
                       <div className="text-sm text-gray-400">Level {Math.floor((user?.gamesPlayed || 0) / 10) + 1}</div>
                     </div>
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Total Winnings:</span>
-                      <span className="text-green-400 font-bold">${user?.totalWinnings?.toLocaleString() || '0'}</span>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-gray-800/50 rounded-2xl p-3 text-center">
+                      <div className="text-green-400 font-bold text-lg">${user?.totalWinnings?.toLocaleString() || '0'}</div>
+                      <div className="text-xs text-gray-400">Winnings</div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Games Played:</span>
-                      <span className="text-blue-400 font-bold">{user?.gamesPlayed || 0}</span>
+                    <div className="bg-gray-800/50 rounded-2xl p-3 text-center">
+                      <div className="text-blue-400 font-bold text-lg">{user?.gamesPlayed || 0}</div>
+                      <div className="text-xs text-gray-400">Games</div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Win Rate:</span>
-                      <span className="text-purple-400 font-bold">{user?.winRate?.toFixed(1) || '0.0'}%</span>
+                    <div className="bg-gray-800/50 rounded-2xl p-3 text-center">
+                      <div className="text-purple-400 font-bold text-lg">{user?.winRate?.toFixed(1) || '0.0'}%</div>
+                      <div className="text-xs text-gray-400">Win Rate</div>
                     </div>
                   </div>
-                  </div>
+
+                  {/* Action Buttons */}
                   <div className="border-t border-gray-700/50 pt-4 space-y-2">
                     <button className="w-full flex items-center space-x-3 p-3 hover:bg-gray-800/50 rounded-2xl transition-all duration-300 text-left group">
-                      <User className="w-4 h-4 text-gray-400 group-hover:text-white" />
-                      <span className="text-gray-300 group-hover:text-white">Profile Settings</span>
+                      <User className="w-4 h-4 text-gray-400 group-hover:text-green-400" />
+                      <span className="text-gray-300 group-hover:text-white">View Profile</span>
                     </button>
                     <button className="w-full flex items-center space-x-3 p-3 hover:bg-gray-800/50 rounded-2xl transition-all duration-300 text-left group">
-                      <Settings className="w-4 h-4 text-gray-400 group-hover:text-white" />
-                      <span className="text-gray-300 group-hover:text-white">Preferences</span>
+                      <Settings className="w-4 h-4 text-gray-400 group-hover:text-blue-400" />
+                      <span className="text-gray-300 group-hover:text-white">Settings</span>
                     </button>
                     <button 
                       onClick={disconnect}

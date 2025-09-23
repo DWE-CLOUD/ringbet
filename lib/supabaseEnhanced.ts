@@ -20,6 +20,7 @@ export interface Ring {
   created_at: string
   updated_at: string
   tx_hash?: string // Transaction hash for creation
+  is_demo?: boolean // Demo mode flag
 }
 
 export interface RingParticipant {
@@ -65,18 +66,19 @@ export interface UserProfile {
 
 // Enhanced Database functions
 export const ringService = {
-  // Get all rings with participants
-  async getAllRings() {
-    const { data, error } = await supabase
+  // Get all rings with participants (filtered by demo mode)
+  async getAllRings(isDemoMode: boolean = false) {
+    const { data: rings, error } = await supabase
       .from('rings')
       .select(`
         *,
         participants:ring_participants(*)
       `)
+      .eq('is_demo', isDemoMode)
       .order('created_at', { ascending: false })
     
     if (error) throw error
-    return data
+    return rings || []
   },
 
   // Get single ring with participants
@@ -368,22 +370,22 @@ export const userProfileService = {
 
     // Calculate stats
     const totalGames = participations.length
-    const completedGames = participations.filter(p => p.rings.status === 'finished')
-    const wins = completedGames.filter(p => p.rings.winner_address?.toLowerCase() === address)
-    const losses = completedGames.filter(p => p.rings.winner_address?.toLowerCase() !== address)
+    const completedGames = participations.filter((p: any) => p.rings?.status === 'finished')
+    const wins = completedGames.filter((p: any) => p.rings?.winner_address?.toLowerCase() === address)
+    const losses = completedGames.filter((p: any) => p.rings?.winner_address?.toLowerCase() !== address)
     
     const totalWins = wins.length
     const totalLosses = losses.length
     const winRate = totalGames > 0 ? (totalWins / totalGames) * 100 : 0
     
-    const totalVolume = participations.reduce((sum, p) => sum + (p.rings.buy_in || 0), 0)
-    const biggestWin = wins.length > 0 ? Math.max(...wins.map(w => w.rings.total_pot || 0)) : 0
+    const totalVolume = participations.reduce((sum: number, p: any) => sum + (p.rings?.buy_in || 0), 0)
+    const biggestWin = wins.length > 0 ? Math.max(...wins.map((w: any) => w.rings?.total_pot || 0)) : 0
 
     // Calculate current streak
     let currentStreak = 0
     const recentGames = completedGames.slice(-10).reverse() // Last 10 games, most recent first
     for (const game of recentGames) {
-      if (game.rings.winner_address?.toLowerCase() === address) {
+      if ((game as any).rings?.winner_address?.toLowerCase() === address) {
         currentStreak++
       } else {
         break
