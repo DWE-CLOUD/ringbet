@@ -90,7 +90,7 @@ export default function MobileRingCard({
         
         {userInRing && !canStart && (
           <div className="flex-1 bg-gray-700/50 text-gray-400 py-3 rounded-xl font-semibold text-center">
-            You're in! ✅
+            You are in! ✅
           </div>
         )}
         

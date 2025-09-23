@@ -113,7 +113,7 @@ export default function RingCardMobile({
         <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 border border-green-500/30 rounded-2xl p-4">
           <div className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-green-400 font-semibold">You're in this ring!</span>
+            <span className="text-green-400 font-semibold">You are in this ring!</span>
           </div>
         </div>
       ) : canJoin ? (
