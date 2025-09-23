@@ -62,8 +62,8 @@ export default function Header({ isDemoMode = false, onToggleDemoMode, demoBalan
             }`}></div>
             <span className="text-lg">
               {isDemoMode 
-                ? `$${demoBalance.toFixed(3)}` 
-                : `$${user?.balance?.toLocaleString() || '0'}`
+                ? `${demoBalance.toFixed(3)}` 
+                : `${user?.balance?.toLocaleString() || '0'}`
               }
             </span>
             <span className="text-xs opacity-75 ml-1">
