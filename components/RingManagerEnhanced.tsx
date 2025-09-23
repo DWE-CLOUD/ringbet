@@ -10,12 +10,13 @@ import { formatEther } from 'viem';
 interface RingManagerProps {
   onRingChange?: (ring: Ring & { participants: RingParticipant[] }) => void;
   isDemoMode?: boolean;
+  onDemoWin?: (amount: number) => void;
 }
 
 const AVATAR_EMOJIS = ['🎯', '🎲', '🎪', '🎨', '🎭', '🎸', '🎺', '🎻'];
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
 
-export default function RingManagerEnhanced({ onRingChange, isDemoMode = false }: RingManagerProps) {
+export default function RingManagerEnhanced({ onRingChange, isDemoMode = false, onDemoWin }: RingManagerProps) {
   const [rings, setRings] = useState<(Ring & { participants: RingParticipant[] })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -23,6 +24,7 @@ export default function RingManagerEnhanced({ onRingChange, isDemoMode = false }
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [processingRingId, setProcessingRingId] = useState<string | null>(null);
   const [demoJoiningRing, setDemoJoiningRing] = useState<string | null>(null);
+  const [spinningRings, setSpinningRings] = useState<Set<string>>(new Set());
   
   const { address, isConnected } = useAccount();
   const { sendPayment, isProcessing, resetPayment, isConfirmed } = useWalletPayment();
@@ -143,42 +145,80 @@ export default function RingManagerEnhanced({ onRingChange, isDemoMode = false }
             onRingChange(currentRing);
           }
           
-          if (currentRing && currentRing.current_players >= currentRing.max_players) {
-            // Ring is full, start spinning after a short delay
+          console.log(`Player joined! Ring ${ringId}: ${currentRing?.current_players}/${currentRing?.max_players}`);
+          
+          // Check if ring is full and start spinning (only once)
+          if (currentRing && currentRing.current_players >= currentRing.max_players && !spinningRings.has(ringId)) {
+            console.log(`Ring ${ringId} is FULL! Starting spin...`);
+            
+            // Mark ring as spinning to prevent duplicate spins
+            setSpinningRings(prev => new Set([...Array.from(prev), ringId]));
+            
+            // Start spinning immediately when full
             setTimeout(async () => {
-              await ringService.startSpinning(ringId);
-              loadRings();
-              
-              // Update ring view to show spinning status
-              const spinningRings = await ringService.getAllRings(true);
-              const spinningRing = spinningRings?.find(r => r.id === ringId);
-              if (spinningRing && onRingChange) {
-                onRingChange(spinningRing);
-              }
-              
-              // Simulate wheel spinning for 4 seconds
-              setTimeout(async () => {
-                const finalRings = await ringService.getAllRings(true);
-                const finalRing = finalRings?.find(r => r.id === ringId);
+              try {
+                await ringService.startSpinning(ringId);
+                console.log(`Ring ${ringId} spinning started`);
+                loadRings();
                 
-                if (finalRing && finalRing.participants && finalRing.participants.length > 0) {
-                  // Select random winner
-                  const randomWinner = finalRing.participants[
-                    Math.floor(Math.random() * finalRing.participants.length)
-                  ];
-                  
-                  await ringService.declareWinner(ringId, randomWinner.player_address, randomWinner.player_name);
-                  loadRings();
-                  
-                  // Update ring view to show winner
-                  const winnerRings = await ringService.getAllRings(true);
-                  const winnerRing = winnerRings?.find(r => r.id === ringId);
-                  if (winnerRing && onRingChange) {
-                    onRingChange(winnerRing);
-                  }
+                // Update ring view to show spinning status
+                const spinningRings = await ringService.getAllRings(true);
+                const spinningRing = spinningRings?.find(r => r.id === ringId);
+                if (spinningRing && onRingChange) {
+                  onRingChange(spinningRing);
                 }
-              }, 4000); // 4 seconds for wheel spin
-            }, 1500); // 1.5 seconds delay before starting spin
+                
+                // Simulate wheel spinning for 3 seconds
+                setTimeout(async () => {
+                  try {
+                    const finalRings = await ringService.getAllRings(true);
+                    const finalRing = finalRings?.find(r => r.id === ringId);
+                    
+                    if (finalRing && finalRing.participants && finalRing.participants.length > 0) {
+                      // Select random winner
+                      const randomWinner = finalRing.participants[
+                        Math.floor(Math.random() * finalRing.participants.length)
+                      ];
+                      
+                      console.log(`Winner selected: ${randomWinner.player_name}`);
+                      
+                      await ringService.declareWinner(ringId, randomWinner.player_address, randomWinner.player_name);
+                      loadRings();
+                      
+                      // Remove ring from spinning set
+                      setSpinningRings(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(ringId);
+                        return newSet;
+                      });
+                      
+                      // Check if user won and update demo balance
+                      if (randomWinner.player_address === address && onDemoWin) {
+                        console.log(`User won! Adding ${finalRing.total_pot} to demo balance`);
+                        onDemoWin(finalRing.total_pot);
+                      }
+                      
+                      // Update ring view to show winner
+                      const winnerRings = await ringService.getAllRings(true);
+                      const winnerRing = winnerRings?.find(r => r.id === ringId);
+                      if (winnerRing && onRingChange) {
+                        onRingChange(winnerRing);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error declaring winner:', error);
+                  }
+                }, 3000); // 3 seconds for wheel spin
+              } catch (error) {
+                console.error('Error starting spin:', error);
+                // Remove from spinning set if spin failed
+                setSpinningRings(prev => {
+                  const newSet = new Set(Array.from(prev));
+                  newSet.delete(ringId);
+                  return newSet;
+                });
+              }
+            }, 1000); // 1 second delay before starting spin
           }
         } catch (error) {
           console.error('Error adding demo player:', error);

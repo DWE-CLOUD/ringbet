@@ -7,9 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 interface HeaderProps {
   isDemoMode?: boolean;
   onToggleDemoMode?: () => void;
+  demoBalance?: number;
 }
 
-export default function Header({ isDemoMode = false, onToggleDemoMode }: HeaderProps) {
+export default function Header({ isDemoMode = false, onToggleDemoMode, demoBalance = 0 }: HeaderProps) {
   const { user, disconnect } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -51,9 +52,23 @@ export default function Header({ isDemoMode = false, onToggleDemoMode }: HeaderP
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-6 py-3 rounded-3xl font-bold shadow-lg hover:shadow-yellow-500/30 hover:scale-105 transition-all duration-300 cursor-pointer">
-            <div className="w-4 h-4 bg-yellow-600 rounded-full animate-bounce"></div>
-            <span className="text-lg">${user?.balance?.toLocaleString() || '0'}</span>
+          <div className={`flex items-center space-x-2 px-6 py-3 rounded-3xl font-bold shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer ${
+            isDemoMode 
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-purple-500/30' 
+              : 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:shadow-yellow-500/30'
+          }`}>
+            <div className={`w-4 h-4 rounded-full animate-bounce ${
+              isDemoMode ? 'bg-purple-700' : 'bg-yellow-600'
+            }`}></div>
+            <span className="text-lg">
+              {isDemoMode 
+                ? `$${demoBalance.toFixed(3)}` 
+                : `$${user?.balance?.toLocaleString() || '0'}`
+              }
+            </span>
+            <span className="text-xs opacity-75 ml-1">
+              {isDemoMode ? 'DEMO' : 'ETH'}
+            </span>
           </div>
 
           {/* Real/Demo Mode Toggle */}

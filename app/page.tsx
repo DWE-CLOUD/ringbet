@@ -35,6 +35,23 @@ function AppContent() {
   const [showLoadingComplete, setShowLoadingComplete] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoNotification, setDemoNotification] = useState<string | null>(null);
+  const [demoBalance, setDemoBalance] = useState(() => {
+    // Load demo balance from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ringbet_demo_balance');
+      return saved ? parseFloat(saved) : 0;
+    }
+    return 0;
+  });
+
+  // Update demo balance and persist to localStorage
+  const updateDemoBalance = (amount: number) => {
+    const newBalance = demoBalance + amount;
+    setDemoBalance(newBalance);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ringbet_demo_balance', newBalance.toString());
+    }
+  };
 
   const handleSpinComplete = (winner: any) => {
     if (currentRing) {
@@ -110,7 +127,11 @@ function AppContent() {
       
       {/* Desktop Header */}
       <div className="hidden md:block">
-        <Header isDemoMode={isDemoMode} onToggleDemoMode={() => setIsDemoMode(!isDemoMode)} />
+        <Header 
+          isDemoMode={isDemoMode}
+          onToggleDemoMode={() => setIsDemoMode(!isDemoMode)}
+          demoBalance={demoBalance}
+        />
       </div>
       
       {/* Mobile Header */}
@@ -128,6 +149,7 @@ function AppContent() {
               <RingManager 
                 onRingChange={handleRingChange} 
                 isDemoMode={isDemoMode}
+                onDemoWin={updateDemoBalance}
               />
             </div>
           ) : currentView === 'leaderboard' ? (
