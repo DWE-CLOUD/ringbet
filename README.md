@@ -85,7 +85,7 @@ To run RingBet locally or deploy your own version, follow the standard Web3 deve
 
 ## 📄 License & Contact
 
-This project is licensed under the **[Insert Your License Here, e.g., MIT License]**.
+This project is licensed under MIT
 
   * **Team:** xAGI
   * **Devfolio Project Link:** `https://devfolio.co/projects/ringbet-3777`
