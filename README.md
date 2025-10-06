@@ -63,7 +63,7 @@ To run RingBet locally or deploy your own version, follow the standard Web3 deve
 
 1.  **Clone the repository:**
     ```bash
-    git clone [Your Repository URL]
+    git clone https://github.com/DWE-CLOUD/ringbet
     cd ringbet
     ```
 2.  **Install dependencies:**
